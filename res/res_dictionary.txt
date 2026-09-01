@@ -1,0 +1,34 @@
+001 - Logo Digimon Up
+002 - Boton Start
+003 - Checkbox de Saltar Hoy
+004 - Boton Confirmar Aviso
+005 - Tablon de Avisos
+006 - Boton de Recompensas
+007 - Boton Obtener Recompensas
+008 - Texto Toca para Cerrar
+009 - Boton A Pull Automatico
+010 - Granja de Carne Boton Seleccionar
+011 - Granja de Carne Pala
+012 - Granja de Carne Boton Regar
+013 - Granja de Carne Boton X
+014 - Calabozo Boton Intentar
+015 - Calabozo Toca para Cerrar
+016 - Anuncio Claqueta 0/2
+017 - Anuncio Claqueta Icono
+An001 - Anuncio x 001
+C01 - Calabozo de Devimon
+C02 - Calabozo de Bakemon
+C03 - Digifabrica
+C04 - Defensa en Red
+C05 - Mar Metalico
+E01 - Fase Fallida
+E02 - Icono Time Sale
+L01 - Menu Explorar
+L02 - Menu Explorar Granja de Carne
+L03 - Icono de Carne
+L04 - Menu Calabozo
+L05 - Tablon de Anuncios
+L06 - Ventana de Calabozo Devimon
+L07 - Boton Confirmar Anuncio
+L08 - Tablon de Ofertas
+N01 - Devimon 0/2

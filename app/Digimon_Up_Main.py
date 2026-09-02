@@ -63,7 +63,7 @@ def ciclo_calabozo(
             clic(coords_intentar, delay_despues=2.0)
             time.sleep(1.0)
             clic(coords_intentar, delay_despues=2.0)
-            esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=2.0)
+            esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=1.0)
             time.sleep(4.0)
             print("Calabozo Terminado")
             continue
@@ -88,13 +88,13 @@ def ciclo_calabozo(
             cerrar_anuncio_banco_x(lista_imgs_x=banco_x_anuncios)
 
             time.sleep(4.0)
-            
+
             clic_hasta_confirmar(coords_o_img_a_clicar=(280, 975), img_confirmacion=img_confirmacion)
             continue
 
         time.sleep(1.5)
 
-    clic_hasta_confirmar(coords_o_img_a_clicar=(280, 975), img_confirmacion="032.png", umbral=1.00)
+    clic_hasta_confirmar(coords_o_img_a_clicar=(280, 975), img_confirmacion=img_confirmacion, umbral=1.00)
 
     if img_bttn_confirmar_salir:
         time.sleep(1.0)

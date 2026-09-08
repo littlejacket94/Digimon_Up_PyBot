@@ -192,7 +192,8 @@ def ciclo_inactividad(
 
         animar_espera("Esperando")
         time.sleep(intervalo)
-        
+
+# Función Clic hasta Confirmar
 def clic_hasta_confirmar(
     coords_o_img_a_clicar,
     img_confirmacion,
@@ -222,6 +223,73 @@ def clic_hasta_confirmar(
         time.sleep(intervalo_reintento)
         
     print(f"ERROR: No se confirmó la transición hacia '{img_confirmacion}'.")
+    return False
+
+# Función clic y confirmar
+def esperar_clic_y_confirmar(
+    img_o_coords_origen,
+    img_confirmacion=None,
+    img_desaparecer=None,
+    desaparecer_origen=False,
+    clic_previo=None,
+    delay_clic_previo=0.5,
+    timeout_aparicion=15.0,
+    timeout_confirmacion=10.0,
+    intervalo_reintento=1.2,
+    umbral=0.8,
+    delay_antes_clic=0.2
+):
+    if clic_previo:
+        clic(clic_previo, delay_despues=delay_clic_previo)
+
+    inicio_fase1 = time.time()
+    punto_clic = None
+
+    # ETAPA 1: Localizar / Esperar el elemento de origen
+    if isinstance(img_o_coords_origen, tuple):
+        punto_clic = img_o_coords_origen
+    else:
+        while time.time() - inicio_fase1 < timeout_aparicion:
+            pantalla = capturar_pantalla()
+            coords = buscar_coordenadas(img_o_coords_origen, pantalla=pantalla, umbral=umbral)
+            if coords:
+                punto_clic = coords
+                break
+            animar_espera(f"Esperando '{img_o_coords_origen}'")
+            time.sleep(0.5)
+
+        if not punto_clic:
+            limpiar_linea_espera()
+            return False
+
+    limpiar_linea_espera()
+    time.sleep(delay_antes_clic)
+
+    # ETAPA 2: Bucle reactivo hasta confirmar
+    inicio_fase2 = time.time()
+    while time.time() - inicio_fase2 < timeout_confirmacion:
+        pantalla = capturar_pantalla()
+        if pantalla is not None:
+            if img_confirmacion and buscar_coordenadas(img_confirmacion, pantalla=pantalla, umbral=umbral):
+                return True
+
+            if desaparecer_origen and isinstance(img_o_coords_origen, str):
+                if not buscar_coordenadas(img_o_coords_origen, pantalla=pantalla, umbral=umbral):
+                    return True
+
+            if img_desaparecer and not buscar_coordenadas(img_desaparecer, pantalla=pantalla, umbral=umbral):
+                return True
+
+            if isinstance(img_o_coords_origen, str):
+                punto_actual = buscar_coordenadas(img_o_coords_origen, pantalla=pantalla, umbral=umbral)
+                if punto_actual:
+                    punto_clic = punto_actual
+
+        clic(punto_clic, delay_despues=0.2)
+        time.sleep(intervalo_reintento)
+
+    limpiar_linea_espera()
+    print(f"ERROR: No se confirmó la acción tras clicar.")
     return False
 
 # Deslizar nativo con el ratón de Windows adaptado a emuladores
@@ -278,7 +346,7 @@ def cerrar_anuncio_banco_x(lista_imgs_x=[], timeout_anuncio=45.0):
     input("Cierra el anuncio a mano y pulsa [ENTER]...")
     return False
 
-
+# Función para cerrar el app
 def cerrar_app(nombre_app, img_borrar_todo="BT.png"): #BT - Borrar Todo
     rect = obtener_rect_emulador()
     if not rect:

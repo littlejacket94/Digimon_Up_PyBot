@@ -1,16 +1,6 @@
-# Entornos virtuales
-venv/
-env/
+#gitignore
 __pycache__/
 *.pyc
-
-# Capturas temporales o logs
-screenshots/
-logs/
 *.log
-
-# Archivos del sistema y editor
+logs/
 .vscode/
-.idea/
-.DS_Store
-Thumbs.db

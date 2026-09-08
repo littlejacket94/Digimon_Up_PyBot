@@ -1,40 +1,55 @@
 import time
-from Core_Windows import esperar_y_clicar, ciclo_inactividad, clic, capturar_pantalla, buscar_coordenadas, buscar_o_deslizar, cerrar_anuncio_banco_x, cerrar_app, clic_hasta_confirmar
-from Misc_Features import animar_espera, limpiar_linea_espera
+from Core_Windows import (esperar_y_clicar, 
+                          ciclo_inactividad, 
+                          clic, capturar_pantalla, 
+                          buscar_coordenadas, 
+                          buscar_o_deslizar, 
+                          cerrar_anuncio_banco_x, 
+                          cerrar_app, 
+                          clic_hasta_confirmar, 
+                          esperar_clic_y_confirmar)
+from Misc_Features import animar_espera, limpiar_linea_espera, iniciar_logger
 
 APLICACION = "Digimon Up"
 
 def ciclo_granja_de_carne(
-    img_sel="G03.png", # G03 - Granja de Carne Boton Seleccionar
-    img_pal="G02.png", # G02 - Granja de Carne Pala
-    img_reg="G04.png", # G04 - Granja de Carne Boton Regar
+    coords_parcela=None,
+    img_sel="G03.png",  # G03 - Botón Seleccion
+    img_pal="G02.png",  # G02 - Icono Pala
+    img_reg="G04.png",  # G03 - Boton Regar
+    coords_bttn_reg=(280, 895),
     timeout=5.0
 ):
-    inicio = time.time()
+    if coords_parcela:
+        clic(coords_parcela, delay_despues=0.8)
 
+    inicio = time.time()
     while time.time() - inicio < timeout:
         pantalla = capturar_pantalla()
+        if pantalla is None:
+            time.sleep(0.3)
+            continue
 
-        coords_pal = buscar_coordenadas(img_pal, pantalla=pantalla)
-        if coords_pal:
-            clic(coords_pal, delay_despues=1.0)
-            
-            esperar_y_clicar(img_sel, timeout=5.0, delay_antes_clic=0.5)
+        # 1. Caso Pala
+        if buscar_coordenadas(img_pal, pantalla=pantalla):
+            print("Recolectando...")
+            if esperar_clic_y_confirmar(img_pal, img_confirmacion=img_sel, timeout_confirmacion=4.0):
+                esperar_clic_y_confirmar(img_sel, desaparecer_origen=True, timeout_confirmacion=4.0)
             return
 
-        coords_sel = buscar_coordenadas(img_sel, pantalla=pantalla)
-        if coords_sel:
-            clic(coords_sel, delay_despues=1.0)
+        # 2. Caso Menú ya abierto
+        if buscar_coordenadas(img_sel, pantalla=pantalla):
+            print("Seleccionando semilla...")
+            esperar_clic_y_confirmar(img_sel, desaparecer_origen=True, timeout_confirmacion=4.0)
             return
 
-        coords_reg = buscar_coordenadas(img_reg, pantalla=pantalla)
-        if coords_reg:
-            clic((280, 895), delay_despues=1.0)
+        # 3. Caso Regar
+        if buscar_coordenadas(img_reg, pantalla=pantalla):
+            print("Regando cultivo...")
+            esperar_clic_y_confirmar(coords_bttn_reg, img_desaparecer=img_reg, timeout_confirmacion=4.0)
             return
 
         time.sleep(0.3)
-
-    return None
 
 
 def ciclo_calabozo(
@@ -44,6 +59,7 @@ def ciclo_calabozo(
     img_claqueta_agotada="016.png",      # 016 - Texto 0/2 morado
     img_sin_anuncios="018.png",           # 018 - Aviso sin anuncios
     img_bttn_confirmar_salir=None,        # Opcional: para confirmaciones como Defensa en Red
+    umbral_confirmacion=1.00,
     img_confirmacion="032.png",
     banco_x_anuncios=[],
     ver_anuncios=False
@@ -63,7 +79,7 @@ def ciclo_calabozo(
             clic(coords_intentar, delay_despues=2.0)
             time.sleep(1.0)
             clic(coords_intentar, delay_despues=2.0)
-            esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=1.0)
+            esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=0.5)
             time.sleep(4.0)
             print("Calabozo Terminado")
             continue
@@ -71,11 +87,11 @@ def ciclo_calabozo(
         coords_claqueta = buscar_coordenadas(img_bttn_claqueta, pantalla=pantalla)
         if coords_claqueta:
             if not ver_anuncios:
-                print("Ciclo de Calabozo Terminado 1")
+                print("Ciclo de Calabozo Terminado")
                 break
 
             if buscar_coordenadas(img_claqueta_agotada, pantalla=pantalla, umbral=0.95):
-                print("Ciclo de Calabozo Terminado 2")
+                print("Ciclo de Calabozo Terminado")
                 break
 
             clic(coords_claqueta, delay_despues=2.0)
@@ -94,7 +110,7 @@ def ciclo_calabozo(
 
         time.sleep(1.5)
 
-    clic_hasta_confirmar(coords_o_img_a_clicar=(280, 975), img_confirmacion=img_confirmacion, umbral=1.00)
+    clic_hasta_confirmar(coords_o_img_a_clicar=(280, 975), img_confirmacion=img_confirmacion, umbral=umbral_confirmacion)
 
     if img_bttn_confirmar_salir:
         time.sleep(1.0)
@@ -166,6 +182,61 @@ def ciclo_idle(
     print("Saliendo del ciclo IDLE")
     limpiar_linea_espera()
 
+def iniciar_app(max_intentos=5, timeout_carga=120.0):
+
+    for intento in range(1, max_intentos + 1):
+        print(f"\n[Intento {intento}/{max_intentos}] Abriendo el juego...")
+        
+        # 1. Buscar icono en el escritorio y hacer clic
+        coords_app = buscar_coordenadas("001.png") # 001 - Icono escritorio
+        if coords_app:
+            clic(coords_app, delay_despues=3.0)
+        else:
+            print("No se localizó el icono '001.png'. Volviendo al escritorio de Android...")
+            cerrar_app(nombre_app=APLICACION)
+            time.sleep(2.0)
+            continue
+
+        # 2. Monitorear pantalla de carga
+        inicio_espera = time.time()
+        cargado_exitoso = False
+        
+        while time.time() - inicio_espera < timeout_carga:
+            pantalla = capturar_pantalla()
+            if pantalla is None:
+                time.sleep(1.0)
+                continue
+
+            # Caso Éxito: Llegó a la pantalla con botón Start
+            if buscar_coordenadas("002.png", pantalla=pantalla, umbral=0.70):
+                print("Pantalla de Start alcanzada con éxito.")
+                clic((280, 700), delay_despues=3.0)
+                clic((280, 700), delay_despues=3.0)  # Clic en Start
+                cargado_exitoso = True
+                break
+
+            # Caso Crasheo: Volvió al escritorio de Android tras unos segundos
+            if (time.time() - inicio_espera > 10.0) and buscar_coordenadas("SA.png", pantalla=pantalla):
+                print("ALERTA: El juego se cerró de golpe y regresó al escritorio.")
+                break
+
+            animar_espera(f"Cargando juego ({int(time.time() - inicio_espera)}s)")
+            time.sleep(2.0)
+
+        limpiar_linea_espera()
+
+        if cargado_exitoso:
+            return True
+
+        # Si llegó aquí es porque crasheó o se congeló en la carga (ej. 62%)
+        print(f"Fallo en intento {intento}. Forzando cierre del juego para reiniciar...")
+        cerrar_app(nombre_app=APLICACION)
+        time.sleep(3.0)
+
+    print("ERROR CRÍTICO: No se pudo arrancar el juego tras agotar los intentos.")
+    return False
+
+"""
 def iniciar_app():
     print("Buscando Logo de Digimon Up")
     esperar_y_clicar("001.png", timeout=30) # 001 - Logo Digimon Up
@@ -175,13 +246,25 @@ def iniciar_app():
     esperar_y_clicar("002.png", delay_antes_clic=3.0, timeout=300, coords_destino=(280, 700), intervalo=3.0, cantidad_clics=2, umbral=0.70) # 002 - Boton Start
     print("Click en Start")
     return None
-
+"""
 def anuncios():
     print("Buscando Checkbox de Dejar de Mostrar Hoy")
-    esperar_y_clicar("010.png", delay_antes_clic=3.0, timeout=20, cantidad_clics=2) #010 - Checkbox Dejar de Mostrar Hoy
-    print("Click en Checkbox o Omitido por haber hecho click antes")
-    # Cambiar esta funcion por clic_hasta_confirmar
     
+    pantalla_inicial = capturar_pantalla()
+    if pantalla_inicial is not None and buscar_coordenadas("033.png", pantalla=pantalla_inicial):
+        print("El checkbox ya estaba marcado previamente.")
+    else:
+        
+        esperar_clic_y_confirmar(
+            img_o_coords_origen="010.png",
+            img_confirmacion="033.png",
+            timeout_aparicion=40.0,
+            timeout_confirmacion=6.0,
+            intervalo_reintento=1.0,
+            delay_antes_clic=1.0
+        )
+        print("Checkbox marcado con éxito.")
+
     print("Clicks en confirmar para quitar anuncios destacados")
     ciclo_inactividad("011.png", timeout_inactividad=5.0) # 011 - Boton Confirmar Anuncios Destacados
 
@@ -215,35 +298,23 @@ def hologramas_automaticos():
 
 def granja_de_carne():
     print("Clic en el menu de Explorar")
-    clic(coords=(415, 980), delay_despues=3.0) #Cordenadas Boton Explorar
+    clic(coords=(415, 980), delay_despues=2.0)
 
     print("Clic en Granjas de Carne")
-    clic(coords=(165, 510), delay_despues=3.0) #Cordenadas Boton Granjas de Carne
+    clic(coords=(165, 510), delay_despues=2.5)
 
-    #Clic a la granja Numero 1
-    print("Inicio de Granja de Carne 1")
-    clic(coords=(180, 625))
-    ciclo_granja_de_carne()
-    time.sleep(3)
-    print("Inicio de Granja de Carne 1")
+    parcelas = [
+        ("Granja 1", (180, 625)),
+        ("Granja 2", (180, 775)),
+        ("Granja 3", (385, 775))
+    ]
 
-    #Clic a la granja Numero 2
-    print("Inicio de Granja de Carne 2")
-    clic(coords=(180, 775))
-    ciclo_granja_de_carne()
-    time.sleep(3)
-    print("Inicio de Granja de Carne 2")
-
-    #Clic a la granja Numero 3
-    print("Inicio de Granja de Carne 3")
-    clic(coords=(385, 775))
-    ciclo_granja_de_carne()
-    time.sleep(3)
-    print("Inicio de Granja de Carne 3")
+    for nombre, coords in parcelas:
+        print(f"Atendiendo {nombre}...")
+        ciclo_granja_de_carne(coords_parcela=coords)
 
     print("Cerrar Granjas de Carne")
-    esperar_y_clicar("013.png", timeout=60) # 013 - Granja de Carne Boton X
-    return None
+    esperar_y_clicar("013.png", timeout=10)
 
 def calabozos():
     print("Clic en el menu Calabozo")
@@ -262,7 +333,11 @@ def calabozos():
     time.sleep(3)
 
     print("Inicio Defensa en Red")
-    ciclo_calabozo("C04.png", img_bttn_confirmar_salir="020.png", img_bttn_intentar="019.png", img_confirmacion="020.png") # C04 - Defensa en Red
+    ciclo_calabozo("C04.png", 
+                   img_bttn_confirmar_salir="020.png", 
+                   img_bttn_intentar="019.png", 
+                   img_confirmacion="020.png", 
+                   umbral_confirmacion=0.80) # C04 - Defensa en Red
     time.sleep(3)
 
     print("Inicio Mar Metalico")
@@ -422,7 +497,9 @@ def digimon_up_bot():
     
     #Fase 1: Iniciar Aplicacion en el Emuladior y Dar Start al Juego
     print("Fase 1")
-    iniciar_app()
+    if not iniciar_app():
+        print("Fallo Reintenta el Inicio del Script Manual")
+        return
     
     #Fase 2: Quitar Noticias Destacadas y Tablon de Anuncios
     print("Fase 2")
@@ -478,4 +555,6 @@ def digimon_up_bot():
 
     print("\nRuta del Bot de Digimon Up Finalizada")
 # Ejecutar
-digimon_up_bot()
+if __name__ == "__main__":
+    iniciar_logger(prefijo="Digimon_Up")
+    digimon_up_bot()

@@ -4,8 +4,6 @@ from Misc_Features import iniciar_logger
 from Emulator_Manager import (
     iniciar_emulador, 
     esperar_emulador_listo, 
-    limpiar_anuncios_emulador,
-    posicionar_emulador_a_la_izquierda,
     cerrar_emulador,
 )
 from Digimon_Up_Main import (
@@ -28,14 +26,10 @@ def main_script():
     #Emulator Manager 
     iniciar_emulador()
     time.sleep(10.0)
-    
-    posicionar_emulador_a_la_izquierda()
 
-    if not esperar_emulador_listo(timeout=300.0, img_referencia_escritorio="SA.png"):
+    if not esperar_emulador_listo(timeout=300.0, img_referencia="SA.png"):
         cerrar_emulador()
         return
-
-    limpiar_anuncios_emulador()
 
     #Digimon_Up_Main
     if not iniciar_app():

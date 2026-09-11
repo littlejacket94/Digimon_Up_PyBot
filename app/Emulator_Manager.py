@@ -17,32 +17,44 @@ def iniciar_emulador(nombre_instancia=TITULO_EMULADOR):
         print(f"ERROR al lanzar el emulador: {e}")
         return False
 
-def esperar_emulador_listo(timeout=300.0, img_referencia_escritorio="SA.png"):
+def esperar_emulador_listo(timeout=300.0, img_referencia="SA.png"):
 
     inicio = time.time()
     print("Esperando a que la ventana del emulador responda...")
     
-    # 1. Esperar registro de la ventana
+    ventana_encontrada = False
     while time.time() - inicio < timeout:
         rect = obtener_rect_emulador(TITULO_EMULADOR)
         if rect:
+            posicionar_emulador_a_la_izquierda()
+            ventana_encontrada = True
             break
         time.sleep(1.0)
-    else:
+        
+    if not ventana_encontrada:
         print("ERROR: La ventana de LDPlayer no apareció.")
         return False
-
-    print("Ventana detectada. Esperando a que el sistema Android cargue...")
     
-    # 2. Esperar elemento visual del escritorio
+    rect = obtener_rect_emulador(TITULO_EMULADOR)
+    pyautogui.click(rect["left"] + 200, rect["top"] + 10)
+    time.sleep(1.0)
+
+    ultimo_esc = time.time()
+    
     while time.time() - inicio < timeout:
         pantalla = capturar_pantalla()
         if pantalla is not None:
 
-            coords = buscar_coordenadas(img_referencia_escritorio, pantalla=pantalla)
-            if coords:
-                print("Escritorio de Android listo.")
+            if buscar_coordenadas(img_referencia, pantalla=pantalla) or buscar_coordenadas("SA.png", pantalla=pantalla):
+                print("Escritorio de Android listo y visible.")
+                time.sleep(1.0)
                 return True
+
+        if time.time() - ultimo_esc >= 4.0:
+            pyautogui.click(rect["left"] + 200, rect["top"] + 10)  # Re-enfocar
+            pyautogui.press('esc')
+            ultimo_esc = time.time()
+
         time.sleep(1.5)
 
     print("ERROR: Tiempo agotado esperando la carga de Android.")
@@ -85,22 +97,6 @@ def posicionar_emulador_a_la_izquierda(titulo=TITULO_EMULADOR):
     print(f"Ventana '{titulo}' posicionada al borde izquierdo (0, 0).")
     return True
 
-def limpiar_anuncios_emulador():
-
-    rect = obtener_rect_emulador(TITULO_EMULADOR)
-    if not rect:
-        return
-    
-    print("Despejando popups y anuncios iniciales del emulador...")
-    pyautogui.click(rect["left"] + 200, rect["top"] + 10)
-    time.sleep(20)
-    
-    # Dos toques de Esc para cerrar ventanas emergentes de LDPlayer
-    pyautogui.press('esc')
-    time.sleep(3.0)
-    pyautogui.press('esc')
-    time.sleep(1.0)
-
 def cerrar_emulador(nombre_instancia=TITULO_EMULADOR):
     """Cierra la instancia de LDPlayer por completo liberando recursos."""
     print(f"Cerrando instancia '{nombre_instancia}'...")
@@ -115,6 +111,5 @@ if __name__ == "__main__":
     iniciar_emulador()
     if esperar_emulador_listo():
         posicionar_emulador_a_la_derecha() # <-- Mueve la ventana al borde derecho
-        limpiar_anuncios_emulador()
         time.sleep(60)
         cerrar_emulador()

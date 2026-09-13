@@ -236,17 +236,6 @@ def iniciar_app(max_intentos=5, timeout_carga=120.0):
     print("ERROR CRÍTICO: No se pudo arrancar el juego tras agotar los intentos.")
     return False
 
-"""
-def iniciar_app():
-    print("Buscando Logo de Digimon Up")
-    esperar_y_clicar("001.png", timeout=30) # 001 - Logo Digimon Up
-    print("Click en Logo de Digimon Up")
-
-    print("Buscando Start")
-    esperar_y_clicar("002.png", delay_antes_clic=3.0, timeout=300, coords_destino=(280, 700), intervalo=3.0, cantidad_clics=2, umbral=0.70) # 002 - Boton Start
-    print("Click en Start")
-    return None
-"""
 def anuncios():
     print("Buscando Checkbox de Dejar de Mostrar Hoy")
     
@@ -306,7 +295,8 @@ def granja_de_carne():
     parcelas = [
         ("Granja 1", (180, 625)),
         ("Granja 2", (180, 775)),
-        ("Granja 3", (385, 775))
+        ("Granja 3", (385, 775)),
+        ("Granja 4", (385, 625))
     ]
 
     for nombre, coords in parcelas:

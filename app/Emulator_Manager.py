@@ -46,8 +46,17 @@ def esperar_emulador_listo(timeout=300.0, img_referencia="SA.png"):
         if pantalla is not None:
 
             if buscar_coordenadas(img_referencia, pantalla=pantalla) or buscar_coordenadas("SA.png", pantalla=pantalla):
-                print("Escritorio de Android listo y visible.")
+                print("Escritorio detectado. Esperando estabilización de anuncios...")
+                
+                # --- NUEVA LÓGICA DE ESTABILIZACIÓN ---
+                time.sleep(8.0) # Damos tiempo a que el anuncio tardío aparezca
+                pyautogui.click(rect["left"] + 200, rect["top"] + 10) # Re-enfocar
+                pyautogui.press('esc') # Matar el anuncio si acaba de salir
                 time.sleep(1.0)
+                pyautogui.press('esc') # Segundo Esc por seguridad
+                time.sleep(2.0)
+                
+                print("Escritorio de Android listo y estabilizado.")
                 return True
 
         if time.time() - ultimo_esc >= 4.0:

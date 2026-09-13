@@ -12,8 +12,9 @@ class LoggerDoble:
         self.terminal = sys.stdout
         
         # Guardar en la subcarpeta /logs dentro de la raíz del proyecto
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        self.logs_dir = os.path.join(base_dir, "logs")
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+        root_dir = os.path.dirname(app_dir)
+        self.logs_dir = os.path.join(root_dir, "logs")
         os.makedirs(self.logs_dir, exist_ok=True)
         
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

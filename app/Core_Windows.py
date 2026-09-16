@@ -201,7 +201,6 @@ def clic_hasta_confirmar(
     umbral=0.8,
     intervalo_reintento=3.0
 ):
-    print("Entro a esta funcion")
     inicio = time.time()
     
     while time.time() - inicio < timeout:

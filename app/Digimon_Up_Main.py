@@ -68,7 +68,7 @@ def ciclo_calabozo(
     if not coords_tarjeta:
         return
     
-    clic(coords_tarjeta, delay_despues=2.0)
+    esperar_clic_y_confirmar(img_o_coords_origen=img_tarjeta_calabozo, desaparecer_origen=True)
 
     # Bucle principal
     while True:
@@ -76,9 +76,7 @@ def ciclo_calabozo(
 
         coords_intentar = buscar_coordenadas(img_bttn_intentar, pantalla=pantalla)
         if coords_intentar:
-            clic(coords_intentar, delay_despues=2.0)
-            time.sleep(1.0)
-            clic(coords_intentar, delay_despues=2.0)
+            esperar_clic_y_confirmar(img_o_coords_origen=img_bttn_intentar, desaparecer_origen=True)
             esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=0.5)
             time.sleep(4.0)
             print("Calabozo Terminado")
@@ -122,7 +120,7 @@ def ciclo_calabozo(
 
 def ciclo_idle(
     tiempo_total_min=15,
-    img_bttn_vender="031.png",           # 031 - Botón Vender (Referencia de menú abierto)
+    imgs_bttn_vender=["031.png", "034.png"],     # AHORA ES UNA LISTA: ["Vender normal", "Vender Todo"]
     img_flechas_arriba="029.png",        # 029 - Flecha verde hacia arriba (Mejora)
     img_bttn_equipar="030.png",          # 030 - Botón Equipar
     img_alerta_exclamacion="028.png",    # 028 - Signo de Exclamación
@@ -142,11 +140,19 @@ def ciclo_idle(
             time.sleep(1.0)
             continue
 
-        # 1. ¿El menú ya se abrió automáticamente (detectando el botón Vender)?
-        coords_vender = buscar_coordenadas(img_bttn_vender, pantalla=pantalla)
+        coords_vender = None
+        img_encontrada = None
+        
+        for img_vender in imgs_bttn_vender:
+            coords_actual = buscar_coordenadas(img_vender, pantalla=pantalla)
+            if coords_actual:
+                coords_vender = coords_actual
+                img_encontrada = img_vender
+                break # Si encuentra uno, rompe el ciclo for y guarda las coordenadas
+
         if coords_vender:
             limpiar_linea_espera()
-            print("Holograma Encontrado")
+            print(f"Holograma(s) Encontrado(s) - Botón detectado: {img_encontrada}")
 
             # Comprobar si hay mejora con flechas verdes
             if buscar_coordenadas(img_flechas_arriba, pantalla=pantalla, umbral=0.85):
@@ -154,12 +160,12 @@ def ciclo_idle(
                 print("Holograma Equipado")
                 time.sleep(1.2)
 
-            # Vender objeto
+            # Vender objeto(s) usando la coordenada del botón que se encontró
             clic(coords_vender, delay_despues=1.5)
-            print("Holograma Vendido")
+            print("Holograma(s) Vendido(s)")
             continue
 
-        # 2. Manejo de pantallas intrusivas (E01 - Fase Fallida, E02 - Time Sale)
+        # Manejo de pantallas intrusivas (E01 - Fase Fallida, E02 - Time Sale)
         intrusiva_encontrada = False
         for img_e in imgs_intrusivas:
             if buscar_coordenadas(img_e, pantalla=pantalla):
@@ -171,7 +177,7 @@ def ciclo_idle(
         if intrusiva_encontrada:
             continue
 
-        # 3. ¿Apareció la exclamación para abrir el menú manualmente?
+        # Aparicion de Exclamacion
         if buscar_coordenadas(img_alerta_exclamacion, pantalla=pantalla, umbral=0.70):
             limpiar_linea_espera()
             clic(coords_clic_alerta, delay_despues=4.0)

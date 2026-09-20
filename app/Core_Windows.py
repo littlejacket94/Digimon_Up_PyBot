@@ -201,7 +201,6 @@ def clic_hasta_confirmar(
     umbral=0.8,
     intervalo_reintento=3.0
 ):
-    print("Entro a esta funcion")
     inicio = time.time()
     
     while time.time() - inicio < timeout:
@@ -237,7 +236,8 @@ def esperar_clic_y_confirmar(
     timeout_confirmacion=10.0,
     intervalo_reintento=1.2,
     umbral=0.8,
-    delay_antes_clic=0.2
+    delay_antes_clic=0.2,
+    desplazamiento=(0, 0) # <--- NUEVO PARÁMETRO
 ):
     if clic_previo:
         clic(clic_previo, delay_despues=delay_clic_previo)
@@ -247,13 +247,15 @@ def esperar_clic_y_confirmar(
 
     # ETAPA 1: Localizar / Esperar el elemento de origen
     if isinstance(img_o_coords_origen, tuple):
-        punto_clic = img_o_coords_origen
+        # Aplicamos el desplazamiento a la coordenada fija si es proporcionada
+        punto_clic = (img_o_coords_origen[0] + desplazamiento[0], img_o_coords_origen[1] + desplazamiento[1])
     else:
         while time.time() - inicio_fase1 < timeout_aparicion:
             pantalla = capturar_pantalla()
             coords = buscar_coordenadas(img_o_coords_origen, pantalla=pantalla, umbral=umbral)
             if coords:
-                punto_clic = coords
+                # Sumamos el desplazamiento al centro de la imagen detectada
+                punto_clic = (coords[0] + desplazamiento[0], coords[1] + desplazamiento[1])
                 break
             animar_espera(f"Esperando '{img_o_coords_origen}'")
             time.sleep(0.5)
@@ -283,7 +285,8 @@ def esperar_clic_y_confirmar(
             if isinstance(img_o_coords_origen, str):
                 punto_actual = buscar_coordenadas(img_o_coords_origen, pantalla=pantalla, umbral=umbral)
                 if punto_actual:
-                    punto_clic = punto_actual
+                    # Aplicamos desplazamiento también en la etapa reactiva
+                    punto_clic = (punto_actual[0] + desplazamiento[0], punto_actual[1] + desplazamiento[1])
 
         clic(punto_clic, delay_despues=0.2)
         time.sleep(intervalo_reintento)
@@ -327,6 +330,22 @@ def buscar_o_deslizar(nombre_archivo, max_deslices=5, punto_swipe_inicio=(280, 8
     print(f"ERROR: No se encontró '{nombre_archivo}'")
     return None
 
+def verificar_imagen(nombre_archivo, timeout=10.0, mensaje="Verificando", intervalo=1.0, umbral=0.8):
+
+    inicio = time.time()
+    
+    while time.time() - inicio < timeout:
+        pantalla = capturar_pantalla()
+        if pantalla is not None and buscar_coordenadas(nombre_archivo, pantalla=pantalla, umbral=umbral):
+            limpiar_linea_espera()
+            return True
+            
+        animar_espera(mensaje)
+        time.sleep(intervalo)
+        
+    limpiar_linea_espera()
+    return False
+
 # Cerrar Anuncio con Banco de X
 def cerrar_anuncio_banco_x(lista_imgs_x=[], timeout_anuncio=45.0):
     inicio = time.time()
@@ -346,11 +365,65 @@ def cerrar_anuncio_banco_x(lista_imgs_x=[], timeout_anuncio=45.0):
     input("Cierra el anuncio a mano y pulsa [ENTER]...")
     return False
 
+# Función genérica para abrir y estabilizar cualquier app desde el escritorio
+def abrir_app(nombre_app, img_icono_app, max_intentos=5, timeout_arranque=40.0):
+    # Sistema de intentos para iniciar el app
+    for intento in range(1, max_intentos + 1):
+        print(f"\n[Intento {intento}/{max_intentos}] Abriendo la app '{nombre_app}'...")
+        
+        coords_app = buscar_coordenadas(img_icono_app)
+        if not coords_app:
+            print(f"No se localizó el icono '{img_icono_app}'.")
+            cerrar_app(nombre_app=nombre_app)
+            time.sleep(2.0)
+            continue
+            
+        clic(coords_app, delay_despues=3.0)
+        
+        # Monitorear si crashea (vuelve al escritorio de Android: SA.png)
+        inicio_espera = time.time()
+        crasheo = False
+        
+        while time.time() - inicio_espera < timeout_arranque:
+            pantalla = capturar_pantalla()
+            if pantalla is None:
+                time.sleep(1.0)
+                continue
+                
+            # Si vemos System Apps (SA.png) tras 5 segundos, la app se cerró de golpe
+            if (time.time() - inicio_espera > 5.0) and buscar_coordenadas("SA.png", pantalla=pantalla):
+                print(f"ALERTA: La app '{nombre_app}' se cerró de golpe.")
+                crasheo = True
+                break
+                
+            animar_espera(f"Iniciando {nombre_app} ({int(time.time() - inicio_espera)}s)")
+            time.sleep(2.0)
+            
+        limpiar_linea_espera()
+        
+        if not crasheo:
+            print(f"App '{nombre_app}' estabilizada con éxito.")
+            return True
+            
+        # Si llegó aquí es porque crasheó. Forzamos cierre y reintentamos el bucle.
+        print(f"Fallo en intento {intento}. Cerrando app para reiniciar...")
+        cerrar_app(nombre_app=nombre_app)
+        time.sleep(3.0)
+        
+    print(f"ERROR CRÍTICO: No se pudo arrancar '{nombre_app}' tras agotar los {max_intentos} intentos.")
+    return False
+
 # Función para cerrar el app
 def cerrar_app(nombre_app, img_borrar_todo="BT.png"): #BT - Borrar Todo
     rect = obtener_rect_emulador()
     if not rect:
         return False
+
+    # Enfocar emulador y presionar F1
+    pyautogui.click(rect["left"] + 200, rect["top"] + 10)
+    time.sleep(0.5)
+    pyautogui.press('f1')
+    time.sleep(3)
 
     # Enfocar emulador y presionar F2
     pyautogui.click(rect["left"] + 200, rect["top"] + 10)

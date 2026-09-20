@@ -5,6 +5,7 @@ from Core_Windows import (esperar_y_clicar,
                           buscar_coordenadas, 
                           buscar_o_deslizar, 
                           cerrar_anuncio_banco_x, 
+                          abrir_app,
                           cerrar_app, 
                           clic_hasta_confirmar, 
                           esperar_clic_y_confirmar)
@@ -68,7 +69,7 @@ def ciclo_calabozo(
     if not coords_tarjeta:
         return
     
-    clic(coords_tarjeta, delay_despues=2.0)
+    esperar_clic_y_confirmar(img_o_coords_origen=img_tarjeta_calabozo, desaparecer_origen=True)
 
     # Bucle principal
     while True:
@@ -76,9 +77,7 @@ def ciclo_calabozo(
 
         coords_intentar = buscar_coordenadas(img_bttn_intentar, pantalla=pantalla)
         if coords_intentar:
-            clic(coords_intentar, delay_despues=2.0)
-            time.sleep(1.0)
-            clic(coords_intentar, delay_despues=2.0)
+            esperar_clic_y_confirmar(img_o_coords_origen=img_bttn_intentar, desaparecer_origen=True)
             esperar_y_clicar("014.png", timeout=120, cantidad_clics=2, intervalo_entre_clics=0.5)
             time.sleep(4.0)
             print("Calabozo Terminado")
@@ -122,7 +121,7 @@ def ciclo_calabozo(
 
 def ciclo_idle(
     tiempo_total_min=15,
-    img_bttn_vender="031.png",           # 031 - Botón Vender (Referencia de menú abierto)
+    imgs_bttn_vender=["031.png", "034.png"],     # AHORA ES UNA LISTA: ["Vender normal", "Vender Todo"]
     img_flechas_arriba="029.png",        # 029 - Flecha verde hacia arriba (Mejora)
     img_bttn_equipar="030.png",          # 030 - Botón Equipar
     img_alerta_exclamacion="028.png",    # 028 - Signo de Exclamación
@@ -142,11 +141,19 @@ def ciclo_idle(
             time.sleep(1.0)
             continue
 
-        # 1. ¿El menú ya se abrió automáticamente (detectando el botón Vender)?
-        coords_vender = buscar_coordenadas(img_bttn_vender, pantalla=pantalla)
+        coords_vender = None
+        img_encontrada = None
+        
+        for img_vender in imgs_bttn_vender:
+            coords_actual = buscar_coordenadas(img_vender, pantalla=pantalla)
+            if coords_actual:
+                coords_vender = coords_actual
+                img_encontrada = img_vender
+                break # Si encuentra uno, rompe el ciclo for y guarda las coordenadas
+
         if coords_vender:
             limpiar_linea_espera()
-            print("Holograma Encontrado")
+            print(f"Holograma(s) Encontrado(s) - Botón detectado: {img_encontrada}")
 
             # Comprobar si hay mejora con flechas verdes
             if buscar_coordenadas(img_flechas_arriba, pantalla=pantalla, umbral=0.85):
@@ -154,12 +161,12 @@ def ciclo_idle(
                 print("Holograma Equipado")
                 time.sleep(1.2)
 
-            # Vender objeto
+            # Vender objeto(s) usando la coordenada del botón que se encontró
             clic(coords_vender, delay_despues=1.5)
-            print("Holograma Vendido")
+            print("Holograma(s) Vendido(s)")
             continue
 
-        # 2. Manejo de pantallas intrusivas (E01 - Fase Fallida, E02 - Time Sale)
+        # Manejo de pantallas intrusivas (E01 - Fase Fallida, E02 - Time Sale)
         intrusiva_encontrada = False
         for img_e in imgs_intrusivas:
             if buscar_coordenadas(img_e, pantalla=pantalla):
@@ -171,7 +178,7 @@ def ciclo_idle(
         if intrusiva_encontrada:
             continue
 
-        # 3. ¿Apareció la exclamación para abrir el menú manualmente?
+        # Aparicion de Exclamacion
         if buscar_coordenadas(img_alerta_exclamacion, pantalla=pantalla, umbral=0.70):
             limpiar_linea_espera()
             clic(coords_clic_alerta, delay_despues=4.0)
@@ -182,83 +189,107 @@ def ciclo_idle(
     print("Saliendo del ciclo IDLE")
     limpiar_linea_espera()
 
-def iniciar_app(max_intentos=5, timeout_carga=120.0):
+def iniciar_app(timeout_carga=120.0):
+    
+    # Funcion de estabilizacion de inicio
+    if not abrir_app(nombre_app=APLICACION, img_icono_app="001.png", max_intentos=5):
+        return False
 
-    for intento in range(1, max_intentos + 1):
-        print(f"\n[Intento {intento}/{max_intentos}] Abriendo el juego...")
-        
-        # 1. Buscar icono en el escritorio y hacer clic
-        coords_app = buscar_coordenadas("001.png") # 001 - Icono escritorio
-        if coords_app:
-            clic(coords_app, delay_despues=3.0)
-        else:
-            print("No se localizó el icono '001.png'. Volviendo al escritorio de Android...")
-            cerrar_app(nombre_app=APLICACION)
-            time.sleep(2.0)
+    # Esperar a que pase el logo y llegue a "Start"
+    print("\nEsperando la pantalla de Start de Digimon Up...")
+    inicio_espera_start = time.time()
+    start_encontrado = False
+    
+    while time.time() - inicio_espera_start < timeout_carga:
+        pantalla = capturar_pantalla()
+        if pantalla is None:
+            time.sleep(1.0)
             continue
 
-        # 2. Monitorear pantalla de carga
-        inicio_espera = time.time()
-        cargado_exitoso = False
-        
-        while time.time() - inicio_espera < timeout_carga:
-            pantalla = capturar_pantalla()
-            if pantalla is None:
-                time.sleep(1.0)
-                continue
+        if buscar_coordenadas("002.png", pantalla=pantalla, umbral=0.70):
+            print("Pantalla de Start alcanzada con éxito.")
+            clic((280, 700), delay_despues=3.0)
+            clic((280, 700), delay_despues=3.0)  # Clic en Start
+            start_encontrado = True
+            break
 
-            # Caso Éxito: Llegó a la pantalla con botón Start
-            if buscar_coordenadas("002.png", pantalla=pantalla, umbral=0.70):
-                print("Pantalla de Start alcanzada con éxito.")
-                clic((280, 700), delay_despues=3.0)
-                clic((280, 700), delay_despues=3.0)  # Clic en Start
-                cargado_exitoso = True
-                break
+        if buscar_coordenadas("SA.png", pantalla=pantalla):
+            print("ALERTA: El juego se cerró de forma tardía esperando el Start.")
+            return False
 
-            # Caso Crasheo: Volvió al escritorio de Android tras unos segundos
-            if (time.time() - inicio_espera > 10.0) and buscar_coordenadas("SA.png", pantalla=pantalla):
-                print("ALERTA: El juego se cerró de golpe y regresó al escritorio.")
-                break
+        animar_espera(f"Cargando Start ({int(time.time() - inicio_espera_start)}s)")
+        time.sleep(2.0)
 
-            animar_espera(f"Cargando juego ({int(time.time() - inicio_espera)}s)")
-            time.sleep(2.0)
-
+    if not start_encontrado:
         limpiar_linea_espera()
+        print("ERROR: Timeout esperando la pantalla de Start.")
+        return False
 
-        if cargado_exitoso:
-            return True
+    # Confirmar que la carga terminó
+    print("\nEsperando a entrar al juego tras pulsar Start...")
+    
+    # Define las imágenes que te confirman que ya estás dentro del juego
+    imgs_confirmacion_ingreso = ["010.png", "012.png"] # Ej: El tablon de anuncios o texto de dejar de mostrar hoy
+    inicio_espera_ingreso = time.time()
+    
+    while time.time() - inicio_espera_ingreso < timeout_carga:
+        pantalla = capturar_pantalla()
+        if pantalla is None:
+            time.sleep(1.0)
+            continue
 
-        # Si llegó aquí es porque crasheó o se congeló en la carga (ej. 62%)
-        print(f"Fallo en intento {intento}. Forzando cierre del juego para reiniciar...")
-        cerrar_app(nombre_app=APLICACION)
-        time.sleep(3.0)
+        # Revisamos si aparece cualquiera de las imágenes que confirman el ingreso
+        for img in imgs_confirmacion_ingreso:
+            if buscar_coordenadas(img, pantalla=pantalla):
+                limpiar_linea_espera()
+                print(f"Carga finalizada con éxito. Se detectó '{img}'.")
+                return True
 
-    print("ERROR CRÍTICO: No se pudo arrancar el juego tras agotar los intentos.")
+        # Si el juego crashea
+        if buscar_coordenadas("SA.png", pantalla=pantalla):
+            limpiar_linea_espera()
+            print("ALERTA CRÍTICA: El juego crasheó durante la barra de carga tras pulsar Start.")
+            return False
+
+        animar_espera(f"Cargando ingreso al juego ({int(time.time() - inicio_espera_ingreso)}s)")
+        time.sleep(2.0)
+
+    limpiar_linea_espera()
+    print("ERROR: Timeout esperando ingresar al juego tras pulsar Start (posible congelamiento).")
     return False
 
 def anuncios():
-    print("Buscando Checkbox de Dejar de Mostrar Hoy")
+    print("Determinando estado inicial de anuncios...")
     
+    # Capturamos la pantalla una sola vez
     pantalla_inicial = capturar_pantalla()
-    if pantalla_inicial is not None and buscar_coordenadas("033.png", pantalla=pantalla_inicial):
-        print("El checkbox ya estaba marcado previamente.")
-    else:
-        
-        esperar_clic_y_confirmar(
-            img_o_coords_origen="010.png",
-            img_confirmacion="033.png",
-            timeout_aparicion=40.0,
-            timeout_confirmacion=6.0,
-            intervalo_reintento=1.0,
-            delay_antes_clic=1.0
-        )
-        print("Checkbox marcado con éxito.")
+    
+    if pantalla_inicial is not None:
+        if buscar_coordenadas("012.png", pantalla=pantalla_inicial):
+            print("Tablón de anuncios detectado directamente. Saltando pasos previos.")
+            
+        elif buscar_coordenadas("010.png", pantalla=pantalla_inicial):
+            print("Buscando Checkbox de Dejar de Mostrar Hoy")
+            esperar_clic_y_confirmar(
+                img_o_coords_origen="010.png",
+                img_confirmacion="033.png",
+                timeout_aparicion=40.0,
+                timeout_confirmacion=6.0,
+                intervalo_reintento=1.0,
+                delay_antes_clic=1.0
+            )
+            print("Checkbox marcado con éxito.")
 
-    print("Clicks en confirmar para quitar anuncios destacados")
-    ciclo_inactividad("011.png", timeout_inactividad=5.0) # 011 - Boton Confirmar Anuncios Destacados
-
+            print("Clicks en confirmar para quitar anuncios destacados")
+            ciclo_inactividad("011.png", timeout_inactividad=5.0) # 011 - Boton Confirmar Anuncios Destacados
+            
+        else:
+            print("ALERTA: No se detectó ni el checkbox ni el tablón en la captura inicial.")
+            
+    # Acción final: Cierre del tablón (siempre se ejecuta)
     print("Quitar el Tablon de Anuncios")
-    esperar_y_clicar("012.png", coords_destino=(280, 975), timeout=30, cantidad_clics=3, intervalo_entre_clics=3.0, delay_antes_clic=3.0) # 012 - Tablon de Avisos
+    esperar_y_clicar("012.png", coords_destino=(280, 975), timeout=30, cantidad_clics=3, intervalo_entre_clics=3.0, delay_antes_clic=3.0) 
+    
     return None
 
 def recompensas():
@@ -384,9 +415,9 @@ def sorteos():
 
 def jcj():
     print("Ir a Pantalla Principal")
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
     time.sleep(1)
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
 
     #Verificacion de Ventanas Emergentes
     ciclo_inactividad(["E01.png", "E02.png"], timeout_inactividad=10.0, coords_destino=(280, 895)) # E01 - Fase Fallida, E02 - Time Sale
@@ -398,27 +429,27 @@ def jcj():
 
     for i in range(3):
         print("Clic en Entrar")
-        esperar_y_clicar("025.png", timeout=20) # 025 - Boton Entrar Combates
+        esperar_clic_y_confirmar(img_o_coords_origen="025.png", desaparecer_origen=True, intervalo_reintento=3.0) # 025 - Boton Entrar Combates
 
         time.sleep(3)
         print("Batalla Posicion 5")
         clic(coords=(400, 625), delay_despues=3.0) # Coordenadas Boton Intentar Batalla Posicion 5
 
         print("Finalizar Combate")
-        esperar_y_clicar("026.png", timeout=120, cantidad_clics=2) # 026 - Texto Tocar para Cerrar
+        esperar_clic_y_confirmar(img_o_coords_origen="026.png", desaparecer_origen=True, intervalo_reintento=3.0, timeout_aparicion=60.0) # 026 - Texto Tocar para Cerrar
 
         time.sleep(5)
 
     print("Boton Cerrar")
-    esperar_y_clicar("013.png", timeout=20, cantidad_clics=2) # 013 - Boton Cerrar
+    esperar_clic_y_confirmar(img_o_coords_origen="013.png", desaparecer_origen=True, intervalo_reintento=3.0) # 013 - Boton Cerrar
 
     return None
 
 def gemas_diarias():
     print("Ir a Pantalla Principal")
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
     time.sleep(1)
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
 
     ciclo_inactividad(["E01.png", "E02.png"], timeout_inactividad=10.0, coords_destino=(280, 895)) # E01 - Fase Fallida, E02 - Time Sale
     time.sleep(3)
@@ -445,11 +476,30 @@ def gemas_diarias():
     clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
     return None
 
+def cobrar_todas_las_misiones():
+    
+    print("Clics en todos los botones Recibir disponibles")
+    while True:
+        pantalla = capturar_pantalla()
+        if pantalla is None:
+            time.sleep(0.5)
+            continue
+            
+        coords_recibir = buscar_coordenadas("035.png", pantalla=pantalla)
+        if coords_recibir:
+            clic(coords_recibir, delay_despues=2.5) # Clic al botón recibir
+            
+            # Clic para "Aceptar" la ventana de los objetos obtenidos
+            clic(coords=(280, 975), delay_despues=1.5) 
+        else:
+            print("No se detectan más botones Recibir.")
+            break
+
 def recibir_recompensas_misiones():
     print("Ir a Pantalla Principal")
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
     time.sleep(1)
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    clic(coords=(280, 975), delay_despues=2.0) #Cordenadas Boton Global
 
     ciclo_inactividad(["E01.png", "E02.png"], timeout_inactividad=10.0, coords_destino=(280, 895)) # E01 - Fase Fallida, E02 - Time Sale
 
@@ -457,87 +507,115 @@ def recibir_recompensas_misiones():
     clic(coords=(470, 175), delay_despues=3.0) #Cordenadas Boton Misiones
     time.sleep(3)
 
+    # Misiones Diarias
     print("Clic en Seccion Misiones Diarias")
-    clic(coords=(280, 810), delay_despues=3.0) #Cordenadas Apartado Misiones Diarias
-    time.sleep(3)
-
-    print("Clic en Boton Recibir")
-    clic(coords=(415, 590), delay_despues=3.0) #Cordenadas Boton Recibir
-    time.sleep(3)
-
-    print("Aceptar")
-    clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    esperar_clic_y_confirmar(
+        img_o_coords_origen="036.png", 
+        img_confirmacion="039.png", 
+        timeout_aparicion=10.0, 
+        timeout_confirmacion=10.0,
+        delay_antes_clic=1.0
+    )
     time.sleep(1)
-
+    
+    cobrar_todas_las_misiones()
+    
+    # Este clic de recompensa principal lo mantenemos tal cual lo diseñaste
     print("Clic en Las Recompensas Principales")
     clic(coords=(155, 310), delay_despues=3.0) #Cordenadas Recompensas Principales
     time.sleep(3)
-
     print("Aceptar")
     clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
     time.sleep(1)
+
+    # Colección
+    print("Clic en Seccion Coleccion")
+    esperar_clic_y_confirmar(
+        img_o_coords_origen="037.png", 
+        img_confirmacion="040.png", 
+        timeout_aparicion=10.0, 
+        timeout_confirmacion=10.0,
+        delay_antes_clic=1.0
+    )
+    time.sleep(1)
+    
+    cobrar_todas_las_misiones()
+
+    # Misiones EX
+    print("Clic en Seccion Misiones EX")
+    esperar_clic_y_confirmar(
+        img_o_coords_origen="038.png", 
+        img_confirmacion="041.png", 
+        timeout_aparicion=10.0, 
+        timeout_confirmacion=10.0,
+        delay_antes_clic=1.0
+    )
+    time.sleep(1)
+    
+    cobrar_todas_las_misiones()
 
     print("Ir a Pantalla Principal")
     clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
     time.sleep(1)
     clic(coords=(280, 975), delay_despues=3.0) #Cordenadas Boton Global
+    
     return None
 
 def digimon_up_bot():
     
-    #Fase 1: Iniciar Aplicacion en el Emuladior y Dar Start al Juego
-    print("Fase 1")
+    #Fase 1: Iniciar Aplicacion en el Emulador y Dar Start al Juego
+    print(f"Fase 1: Iniciar {APLICACION} y Inicio del Juego")
     if not iniciar_app():
         print("Fallo Reintenta el Inicio del Script Manual")
         return
     
     #Fase 2: Quitar Noticias Destacadas y Tablon de Anuncios
-    print("Fase 2")
+    print("Fase 2: Pop-ups y Noticias")
     anuncios()
     time.sleep(5)
     
     #Fase 3: Recoger Recompensas
-    print("Fase 3")
+    print("Fase 3: Caja de Recompensas")
     recompensas()
     time.sleep(5)
 
     #Fase 4: Activar Automatico
-    print("Fase 4")
+    print("Fase 4: Capsula de Hologramas Automatico")
     hologramas_automaticos()
     time.sleep(5)
 
     #Fase 5: Granja de Carne
-    print("Fase 5")
+    print("Fase 5: Granjas de Carne")
     granja_de_carne()
     time.sleep(5)
     
     #Fase 6: Calabozos
-    print("Fase 6")
+    print("Fase 6: calabozos")
     calabozos()
     time.sleep(5)
 
     #Fase 7: Sorteos
-    print("Fase 7")
+    print("Fase 7: Sorteos")
     sorteos()
     time.sleep(5)
 
     #Fase 8: Jugador contra Jugador
-    print("Fase 8")
+    print("Fase 8: Jugador contra Jugador")
     jcj()
     time.sleep(5)
 
     #Fase 9: Recoger Gemas Diarias
-    print("Fase 9")
+    print("Fase 9: Gemas Diarias")
     gemas_diarias()
     time.sleep(5)
 
-    #Fase 10: cliclo idle
-    print("Fase 10")
+    #Fase 10: ciclo idle
+    print("Fase 10: Ciclo IDLE")
     ciclo_idle()
     time.sleep(5)
 
-    #Fase 11: Recoger
-    print("Fase 11")
+    #Fase 11: Recoger Recompensas Diarias
+    print("Fase 11: Misiones")
     recibir_recompensas_misiones()
     time.sleep(5)
 

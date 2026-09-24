@@ -152,6 +152,7 @@ python app/Digimon_Up_Script_M2.py
 * **`v1.0.1`**: Se cambio el directorio `logs` a la raiz del proyecto en lugar de la carpeta `app\` se agrego la `Granja 4` a las granjas de carne.   
 * **`v1.0.2`**: Se cambio la funcion de `clic()` en `ciclo_calabozo()` por `esperar_clic_y_confirmar()` en la interaccion con las variables `img_tarjeta_calabozo` y `img_bttn_intentar` para mejorar la precision de los clics en calabozos. Se cambio la funcion `ciclo_idle` agregando un segundo parametro a `imgs_bttn_vender` y un ciclo for para verificar entre las dos o mas imagenes. reparar logs basura.
 * **`v1.0.3`**: Modificacion general en `abrir_app()`, optimizar `recibir_recompensas_misiones()` y implementacion de `verificar_imagen()` en core_windows.py
+* **`v1.1.0`**: Reestructuracion general de funciones, Mayor numero de validaciones en funciones varias.
 ### CLI  
 * **`v1.0-cli`**: Creación de la rama CLI con soporte para `Emulator_Manager.py` vía `ldconsole.exe`, separación de rutinas en scripts `Digimon_Up_Script_M1.py` y `Digimon_Up_Script_M2.py`, y reubicación automática de la ventana a coordenadas `(0, 0)`.
 * **`v1.0.1-cli`**: Bucle reactivo con pulsaciones periódicas de la tecla `Esc` en `esperar_emulador_listo()` para eludir anuncios internos de LDPlayer, eliminación de funciones redundantes (`limpiar_anuncios_emulador`) y corrección del nombre del archivo de registro en el script `M2`.
